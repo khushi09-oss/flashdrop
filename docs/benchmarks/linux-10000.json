@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "requests": 10000,
+  "concurrency": 64,
+  "apiInstances": 2,
+  "durationSeconds": 9.667,
+  "requestsPerSecond": 1034.47,
+  "finalHttpStatuses": {"409": 9900, "202": 100},
+  "allAttemptStatuses": {"409": 9900, "202": 100},
+  "transportErrors": {},
+  "latencySeconds": {"p50": 0.008, "p95": 0.24, "p99": 1.033},
+  "database": {
+    "orders": 100, "reservedUnits": 100, "jobs": 100,
+    "confirmed": 100, "remainingStock": 0, "integrity": "ok"
+  }
+}

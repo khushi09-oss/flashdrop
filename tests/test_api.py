@@ -93,6 +93,32 @@ class APITests(unittest.TestCase):
     def test_invalid_json(self):
         self.assertEqual(self.request("POST", "/orders", raw="{oops")[0], 400)
 
+    def test_excessively_nested_json_is_client_error(self):
+        self.assertIn(self.request("POST", "/orders", raw="[" * 1500 + "0" + "]" * 1500)[0], (400, 422))
+
+    def test_duplicate_json_fields_are_rejected(self):
+        raw = '{"userId":"alice","productId":"iphone_16","quantity":1,"quantity":2,"idempotencyKey":"ambiguous"}'
+        self.assertEqual(self.request("POST", "/orders", raw=raw)[0], 400)
+
+    def test_duplicate_content_lengths_are_rejected(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            raw = json.dumps(self.body("ambiguous-length")).encode()
+            conn.putrequest("POST", "/orders")
+            conn.putheader("Content-Type", "application/json")
+            conn.putheader("X-User-Id", "alice")
+            conn.putheader("Content-Length", str(len(raw)))
+            conn.putheader("Content-Length", "1")
+            conn.endheaders(raw)
+            response = conn.getresponse()
+            self.assertEqual(response.status, 400)
+            response.read()
+        finally:
+            conn.close()
+
+    def test_invalid_utf8_is_rejected(self):
+        self.assertEqual(self.request("POST", "/orders", raw=b"\xff")[0], 400)
+
     def test_body_size_cap(self):
         self.assertEqual(self.request("POST", "/orders", raw="x" * 8193)[0], 413)
 

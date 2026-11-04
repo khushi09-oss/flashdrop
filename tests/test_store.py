@@ -125,6 +125,30 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.store.inventory("iphone_16"), 100)
         self.assertEqual(self.count("jobs"), 0)
 
+    def test_failed_queue_insert_rolls_back_order_and_inventory(self):
+        with closing(sqlite3.connect(self.path, isolation_level=None)) as db:
+            db.execute(
+                "CREATE TRIGGER fail_job BEFORE INSERT ON jobs BEGIN SELECT RAISE(ABORT, 'queue unavailable'); END"
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.store.create_order("alice", "iphone_16", 1, "queue-failure")
+        self.assertEqual(self.store.inventory("iphone_16"), 100)
+        self.assertEqual(self.count("orders"), 0)
+        self.assertEqual(self.count("jobs"), 0)
+
+    def test_concurrent_multi_quantity_orders_preserve_remaining_stock(self):
+        def buy(index):
+            try:
+                return self.store.create_order("alice", "iphone_16", 13, f"batch-{index}")[0]
+            except OrderError as exc:
+                return exc.code
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool:
+            results = list(pool.map(buy, range(20)))
+        self.assertEqual(sum(isinstance(result, dict) for result in results), 7)
+        self.assertEqual(results.count("OUT_OF_STOCK"), 13)
+        self.assertEqual(self.store.inventory("iphone_16"), 9)
+
     def test_worker_failure_rolls_back_confirmation_and_ack(self):
         order, _ = self.store.create_order("alice", "iphone_16", 1, "one")
         with closing(sqlite3.connect(self.path, isolation_level=None)) as db:

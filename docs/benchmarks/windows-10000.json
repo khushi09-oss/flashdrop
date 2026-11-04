@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "requests": 10000,
+  "concurrency": 64,
+  "apiInstances": 2,
+  "durationSeconds": 25.793,
+  "requestsPerSecond": 387.71,
+  "finalHttpStatuses": {
+    "409": 9900,
+    "202": 100
+  },
+  "allAttemptStatuses": {
+    "409": 9900,
+    "202": 100,
+    "503": 13
+  },
+  "transportErrors": {},
+  "latencySeconds": {
+    "p50": 0.009,
+    "p95": 1.104,
+    "p99": 2.795
+  },
+  "database": {
+    "orders": 100,
+    "reservedUnits": 100,
+    "jobs": 100,
+    "confirmed": 100,
+    "remainingStock": 0,
+    "integrity": "ok"
+  }
+}

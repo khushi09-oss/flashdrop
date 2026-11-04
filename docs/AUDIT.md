@@ -2,6 +2,7 @@
 
 ## Executed checks
 
+- Expanded suite: 44 tests passed on Windows/Python 3.14 and Linux/Python 3.12, including eight tests with real API/worker subprocesses. Reproducible failure cases, fixed request parsing issues, and both 10,000-intent load reports are documented in [TESTING.md](TESTING.md).
 - [GitHub CI passed](https://github.com/khushi09-oss/flashdrop/actions/runs/41774681722): lint, formatting, all 28 tests, isolated package build, and Docker image build.
 - 28 tests passed on Windows/Python 3.14 and inside the Linux/Python 3.12 container.
 - Real HTTP checks covered acceptance, replay, current status, ownership, malformed JSON, strict quantity types, missing identity, oversized bodies, and concurrent retries.
@@ -30,4 +31,4 @@ The browser demo adds two HTTP tests, bringing the suite to 30. The page's actua
 
 The local identity header is impersonable and is not production authentication. Python's demonstration HTTP server, a single SQLite host, and its serialized write transactions are not a capacity-tested public deployment. Production JWT verification, PostgreSQL adapters, outbox relay, Kafka consumers, Redis integration, image scanning, operational metrics, and cloud provisioning remain the documented production plan.
 
-No 10,000-request performance claim is made. Real Kafka/Redis outages and cloud failover cannot be tested against unprovisioned services. Local crash, rollback, persistence, and duplicate-processing tests verify the implemented equivalents; production adapter tests are a release gate.
+The bounded 10,000-intent test is documented in [TESTING.md](TESTING.md); it does not establish production capacity or 10,000 simultaneous connections. Real Kafka/Redis outages and cloud failover cannot be tested against unprovisioned services. Local crash, rollback, persistence, and duplicate-processing tests verify the implemented equivalents; production adapter tests are a release gate.

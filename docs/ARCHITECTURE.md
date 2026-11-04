@@ -73,7 +73,7 @@ The local queue combines work completion and acknowledgment in one SQLite transa
 
 ## Scale and tradeoffs
 
-The database row for one hot product serializes successful reservations. Adding API containers cannot remove that row contention. Gate traffic before the database, keep transactions short, cap connection pools, pre-scale before a scheduled sale, and measure lock wait and tail latency. No 10,000-request throughput claim is made by this implementation.
+The database row for one hot product serializes successful reservations. Adding API containers cannot remove that row contention. Gate traffic before the database, keep transactions short, cap connection pools, pre-scale before a scheduled sale, and measure lock wait and tail latency. [Bounded local load tests](TESTING.md) exercise 10,000 purchase intents at 64 concurrent clients; they do not establish production capacity or 10,000 simultaneous connections.
 
 Multiple outbox relays can claim batches using PostgreSQL `FOR UPDATE SKIP LOCKED` and a recoverable lease. Never permanently mark an event sent before publishing. Multiple workers distribute Kafka partitions; useful consumer concurrency is bounded by partition count. Partition by order ID because this flow does not require all orders for one product to be processed in order.
 

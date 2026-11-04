@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 MAX_BODY_BYTES = 8192
 
 
+def unique_json_fields(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON field")
+        result[key] = value
+    return result
+
+
 def make_server(store, host="127.0.0.1", port=8000):
     class Handler(BaseHTTPRequestHandler):
         server_version = "FlashDrop"
@@ -48,6 +57,8 @@ def make_server(store, host="127.0.0.1", port=8000):
                 raise OrderError(400, "INVALID_BODY", "Transfer-Encoding is not supported.")
             if self.headers.get_content_type() != "application/json":
                 raise OrderError(415, "INVALID_CONTENT_TYPE", "Use application/json.")
+            if len(self.headers.get_all("Content-Length", [])) != 1:
+                raise OrderError(400, "INVALID_BODY", "Provide exactly one Content-Length header.")
             try:
                 length = int(self.headers.get("Content-Length", "0"))
             except ValueError:
@@ -58,8 +69,8 @@ def make_server(store, host="127.0.0.1", port=8000):
                 data = self.rfile.read(length)
                 if len(data) != length:
                     raise ValueError
-                return json.loads(data)
-            except (ValueError, UnicodeDecodeError):
+                return json.loads(data, object_pairs_hook=unique_json_fields)
+            except (ValueError, UnicodeDecodeError, RecursionError):
                 raise OrderError(400, "INVALID_JSON", "Body must be valid JSON.") from None
 
         def dispatch(self):

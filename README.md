@@ -25,6 +25,7 @@ Open **http://localhost:8000** for a small interactive demo. Place a new order t
 - Deployment image: [docs/deployment.svg](docs/deployment.svg).
 - Editable deployment diagram: [docs/deployment.drawio](docs/deployment.drawio).
 - Deployment notes: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- Failure tests and measured load results: [docs/TESTING.md](docs/TESTING.md).
 
 ## Production architecture
 
@@ -92,6 +93,8 @@ docs/            Architecture, deployment, and interview explanation
 
 ```powershell
 python -m unittest discover -v
+# Optional isolated 10,000-intent test, capped at 64 concurrent clients:
+python -m tests.load_test --requests 10000 --concurrency 64
 # Optional development tools:
 python -m pip install ruff==0.14.3 build==1.3.0
 python -m ruff check .
@@ -99,7 +102,7 @@ python -m ruff format --check .
 python -m build
 ```
 
-The test suite includes actual child-process termination, concurrent retries, competing processes, rollback, ownership checks, and real HTTP requests. It verifies correctness at modest test concurrency; it is not evidence of 10,000-request production capacity.
+The 44-test suite includes real competing API/worker processes, child-process termination, concurrent retries, rollback, ownership checks, and ambiguous request rejection. The separate load runner verifies 10,000 purchase intents at bounded concurrency and records retries, latency, and database invariants. See [the measured results and remaining limits](docs/TESTING.md); this is not evidence of 10,000 simultaneous connections or production capacity.
 
 ## Docker
 
