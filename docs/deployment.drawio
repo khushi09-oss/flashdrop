@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net">
+  <diagram name="FlashDrop | Deployment and operations" id="deployment">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" page="1" pageWidth="1600" pageHeight="900">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="FlashDrop | Deployment and operations&#10;Immutable releases, rolling replacement, durable storage, and explicit recovery boundaries." style="text;html=0;fontSize=24;align=left;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="20" width="1500" height="80" />
+        </mxCell>
+        <mxCell id="cloud" value="PROPOSED AWS PRODUCTION ENVIRONMENT" style="rounded=1;dashed=1;fillColor=#eef2ff;strokeColor=#a5b4fc;verticalAlign=top;align=left;spacing=20;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="235" y="120" width="1320" height="640" />
+        </mxCell>
+        <mxCell id="e0" value="Push" edge="1" parent="1" source="developer" target="ci" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1" value="Release" edge="1" parent="1" source="ci" target="ecr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" value="Deploy digest" edge="1" parent="1" source="ecr" target="ecs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="Inject" edge="1" parent="1" source="secrets" target="ecs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="Serve" edge="1" parent="1" source="ecs" target="users" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="Persist independently of containers" edge="1" parent="1" source="ecs" target="data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1010" y="520" />
+              <mxPoint x="735" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="Observe and alert" edge="1" parent="1" source="ecs" target="metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;fontSize=14;labelBackgroundColor=#f8fafc;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1140" y="530" />
+              <mxPoint x="1380" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="developer" value="Developer&#10;Push / review&#10;Commit SHA" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#475569;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="300" width="150" height="120" />
+        </mxCell>
+        <mxCell id="ci" value="CI checks&#10;Tests + lint + format&#10;Package + image build&#10;Scan before release" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#4f46e5;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="270" y="280" width="230" height="160" />
+        </mxCell>
+        <mxCell id="ecr" value="Amazon ECR&#10;Immutable image digest&#10;Promote same artifact" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#7c3aed;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="600" y="300" width="220" height="120" />
+        </mxCell>
+        <mxCell id="ecs" value="ECS Fargate / 2+ AZs&#10;API + relay + workers&#10;Rolling: 100% / 200%&#10;Health checks + rollback" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#4f46e5;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="940" y="280" width="270" height="160" />
+        </mxCell>
+        <mxCell id="secrets" value="Secrets Manager + IAM&#10;Runtime secrets / OIDC" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#d97706;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="940" y="175" width="270" height="75" />
+        </mxCell>
+        <mxCell id="data" value="Managed data services&#10;RDS Multi-AZ + backups&#10;MSK + ElastiCache&#10;Private network / TLS" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#059669;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="600" y="585" width="270" height="125" />
+        </mxCell>
+        <mxCell id="metrics" value="CloudWatch / alerts&#10;API latency + errors&#10;Outbox age + Kafka lag&#10;DB locks + pending age" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#d97706;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1250" y="585" width="265" height="125" />
+        </mxCell>
+        <mxCell id="users" value="Gateway + ALB&#10;Authenticate + throttle&#10;Drain old API tasks&#10;Send to healthy tasks" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#4f46e5;fontSize=17;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1270" y="290" width="245" height="140" />
+        </mxCell>
+        <mxCell id="note0" value="Roll back the application image; preserve accepted orders and durable queued work." style="text;html=0;align=left;fontSize=17;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="780" width="1500" height="30" />
+        </mxCell>
+        <mxCell id="note1" value="Schema migrations: additive first. Backups: point-in-time recovery plus tested restores." style="text;html=0;align=left;fontSize=17;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="810" width="1500" height="30" />
+        </mxCell>
+        <mxCell id="note2" value="CI build checks are supplied. Cloud provisioning, release publishing, and AWS rollout are a deployment plan." style="text;html=0;align=left;fontSize=17;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="840" width="1500" height="30" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

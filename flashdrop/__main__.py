@@ -10,16 +10,16 @@ from flashdrop.worker import run_worker
 
 
 def main():
-    parser = argparse.ArgumentParser(description='FlashDrop order service')
-    parser.add_argument('--host', default='127.0.0.1')
-    parser.add_argument('--port', type=int, default=8000)
-    parser.add_argument('--db', default=os.environ.get('DATABASE_PATH', 'data/flashdrop.db'))
-    parser.add_argument('--worker-only', action='store_true')
-    parser.add_argument('--no-worker', action='store_true')
+    parser = argparse.ArgumentParser(description="FlashDrop order service")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PATH", "data/flashdrop.db"))
+    parser.add_argument("--worker-only", action="store_true")
+    parser.add_argument("--no-worker", action="store_true")
     args = parser.parse_args()
     if args.worker_only and args.no_worker:
-        parser.error('--worker-only and --no-worker cannot be combined')
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+        parser.error("--worker-only and --no-worker cannot be combined")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     store = Store(args.db)
     store.initialize()
     stop = threading.Event()
@@ -35,7 +35,7 @@ def main():
     if not args.no_worker:
         worker = threading.Thread(target=run_worker, args=(store, stop), daemon=True)
         worker.start()
-    logging.info('Listening on http://%s:%s', args.host, args.port)
+    logging.info("Listening on http://%s:%s", args.host, args.port)
     try:
         stop.wait()
     finally:
@@ -47,5 +47,5 @@ def main():
             worker.join(timeout=10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
