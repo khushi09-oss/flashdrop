@@ -2,6 +2,7 @@
 
 ## Executed checks
 
+- [GitHub CI passed](https://github.com/khushi09-oss/flashdrop/actions/runs/41774681722): lint, formatting, all 28 tests, isolated package build, and Docker image build.
 - 28 tests passed on Windows/Python 3.14 and inside the Linux/Python 3.12 container.
 - Real HTTP checks covered acceptance, replay, current status, ownership, malformed JSON, strict quantity types, missing identity, oversized bodies, and concurrent retries.
 - Concurrent inventory test: 180 attempts for 100 units produced exactly 100 orders and 80 stock rejections, with zero inventory remaining.
