@@ -16,6 +16,8 @@ python scripts/demo.py
 
 The database is created at `data/flashdrop.db`. Restarts preserve orders and inventory. Each demo run purchases one unit. For a separate fresh demo, use `python -m flashdrop --db data/fresh.db`.
 
+Open **http://localhost:8000** for a small interactive demo. Place a new order to see its confirmation, then choose **Retry last request** to verify the order ID stays the same and stock is not reserved twice. The page shows current stock and expandable request/response details. Demo requests consume real inventory in the local database.
+
 ## Documentation
 
 - Architecture image: [docs/architecture.svg](docs/architecture.svg).
@@ -55,6 +57,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/orders/$($order.orderId)" -Headers
 | Unknown product/order or another user's order | 404 |
 | Missing identity / identity mismatch | 401 / 403 |
 | `GET /health` | 200 if the database can be read |
+| `GET /products/iphone_16` | Current inventory snapshot for the demo page |
 | Database busy or unavailable | 503; retry with the same key |
 
 POST always replays the original acceptance status. Use GET for the latest order status. Validation requires exactly the four documented fields, quantity as an integer from 1 to 10,000, and identifiers of 1–128 letters, digits, `.`, `:`, `_`, or `-`. JSON bodies are limited to 8 KiB.
@@ -79,6 +82,7 @@ flashdrop/
   validation.py  Request validation
   store.py       Schema, transactions, inventory, idempotency
   worker.py      Background polling and retry loop
+  static/        Demo page, stylesheet, and browser interactions
 tests/           HTTP, concurrency, rollback, and process-crash tests
 scripts/demo.py  End-to-end demonstration
 docs/            Architecture, deployment, and interview explanation

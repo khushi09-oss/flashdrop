@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import sqlite3
+from importlib.resources import files
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
@@ -64,7 +65,28 @@ def make_server(store, host="127.0.0.1", port=8000):
         def dispatch(self):
             try:
                 path = urlsplit(self.path).path
-                if self.command == "GET" and path == "/health":
+                assets = {
+                    "/": ("index.html", "text/html; charset=utf-8"),
+                    "/app.css": ("app.css", "text/css; charset=utf-8"),
+                    "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                }
+                if self.command == "GET" and path in assets:
+                    name, content_type = assets[path]
+                    content = files("flashdrop").joinpath("static", name).read_bytes()
+                    self.send_response(200)
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Length", str(len(content)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header(
+                        "Content-Security-Policy",
+                        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+                    )
+                    self.end_headers()
+                    self.wfile.write(content)
+                elif self.command == "GET" and path == "/products/iphone_16":
+                    self.send_json(200, {"productId": "iphone_16", "stock": store.inventory("iphone_16")})
+                elif self.command == "GET" and path == "/health":
                     store.inventory("iphone_16")
                     self.send_json(200, {"status": "ok"})
                 elif self.command == "POST" and path == "/orders":

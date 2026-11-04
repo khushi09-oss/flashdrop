@@ -10,6 +10,8 @@ HTTP client → threaded Python API → SQLite transaction
 Background worker ────────────────────────┘
 ```
 
+The API serves a small browser demo at `/`, with fixed routes for its CSS and JavaScript. The page uses the same order endpoints and polls GET for confirmation. `GET /products/iphone_16` exposes a current inventory snapshot for display; stock acceptance is still decided inside the order transaction. Static files are allowlisted and included in the Python package and Docker image. The browser retains the exact last request in page memory for safe retries; refreshing the page clears that convenience state, but never deletes database orders.
+
 Each operation opens its own connection. `BEGIN IMMEDIATE` takes the write lock before the key lookup and stock change. The transaction commits before the API sends 202. There is no in-memory inventory or queue to lose on a restart. The default rollback journal and `synchronous=FULL` provide durability subject to the filesystem and storage device honoring flushes.
 
 The worker selects one unprocessed job, conditionally changes PENDING to CONFIRMED, and marks the job processed in the same transaction. Holding the transaction across these two short database statements is appropriate here. Never hold this database lock while making payment or other network calls.

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlashDrop — Live sale</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header><a href="/" class="brand">FlashDrop<span> / live sale</span></a><span class="demo">LOCAL DEMO</span></header>
+  <main>
+    <section class="intro"><p class="eyebrow">SMALL DROP. REAL ORDERS.</p><h1>Grab yours.<br>Watch it happen.</h1><p>Place an order, follow its confirmation, and retry it safely.</p></section>
+    <div class="workspace">
+      <section class="purchase" aria-labelledby="product-title">
+        <div class="product-top"><span class="eyebrow">TODAY’S DROP</span><span class="stock" id="stock">Checking stock…</span></div>
+        <h2 id="product-title">iPhone 16</h2><p class="muted">Product ID: iphone_16</p>
+        <form id="order-form">
+          <label for="user">Demo user</label><input id="user" name="user" value="user_123" required maxlength="128" pattern="[A-Za-z0-9_.:\-]+" autocomplete="off">
+          <label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" value="1" min="1" max="10000" step="1" required>
+          <button id="place" type="submit">Place new order <span aria-hidden="true">↗</span></button>
+        </form>
+        <p class="hint">Each new order reserves stock. This demo does not charge you.</p>
+      </section>
+      <section class="activity" aria-labelledby="activity-title">
+        <div class="activity-top"><h2 id="activity-title">Your order</h2><span id="status" class="status" data-state="idle">READY</span></div>
+        <p id="message" role="status" aria-live="polite">Your next order starts here.</p>
+        <dl><dt>Order ID</dt><dd id="order-id">—</dd><dt>Request key</dt><dd id="request-key">—</dd><dt>Last request</dt><dd id="request-summary">—</dd></dl>
+        <button type="button" id="retry" class="secondary" disabled>Retry last request</button>
+        <p class="hint">A retry reuses the exact user, quantity, and key. It returns the same order without reserving stock again.</p>
+        <details><summary>Request & response</summary><pre id="response">No request sent yet.</pre></details>
+      </section>
+    </div>
+    <footer><span id="connection">Connecting to your local backend…</span><span>Demo identity only · no sign-in</span></footer>
+  </main>
+</body>
+</html>

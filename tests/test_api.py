@@ -114,6 +114,31 @@ class APITests(unittest.TestCase):
         self.assertTrue(all(r[0] == 202 for r in responses))
         self.assertEqual(len({r[1]["orderId"] for r in responses}), 1)
 
+    def test_demo_assets_are_served_without_exposing_source(self):
+        for path, content_type in [
+            ("/", "text/html"),
+            ("/app.css", "text/css"),
+            ("/app.js", "text/javascript"),
+        ]:
+            with self.subTest(path=path):
+                conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+                try:
+                    conn.request("GET", path)
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 200)
+                    self.assertIn(content_type, response.getheader("Content-Type"))
+                    self.assertIn("frame-ancestors 'none'", response.getheader("Content-Security-Policy"))
+                    self.assertTrue(response.read())
+                finally:
+                    conn.close()
+        self.assertEqual(self.request("GET", "/../store.py")[0], 404)
+        self.assertEqual(self.request("GET", "/static/store.py")[0], 404)
+
+    def test_stock_endpoint_reports_database_inventory(self):
+        status, product, _ = self.request("GET", "/products/iphone_16", user=None)
+        self.assertEqual(status, 200)
+        self.assertEqual(product, {"productId": "iphone_16", "stock": self.store.inventory("iphone_16")})
+
 
 class ValidationTests(unittest.TestCase):
     def test_valid_payload_is_preserved(self):

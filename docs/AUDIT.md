@@ -22,7 +22,11 @@ Inventory, order, retry identity, and durable work share one transaction. The st
 
 No blocking correctness findings remain within the local demonstration scope. The committed application has no third-party runtime packages. Development tools and the base image still require routine vulnerability maintenance.
 
-## Explicit limits
+## Browser demo verification
+
+The browser demo adds two HTTP tests, bringing the suite to 30. The page's actual JavaScript was executed with a small DOM fixture against a live container API: creation and confirmation passed, retrying after editing the form reused the original payload and order ID, stock decreased only once, and insufficient-stock errors reenabled the controls. Static routes and source-file isolation are covered by HTTP tests. Browser rendering could not be visually verified in this environment; desktop/mobile layout checks remain manual.
+
+## Deployment limits
 
 The local identity header is impersonable and is not production authentication. Python's demonstration HTTP server, a single SQLite host, and its serialized write transactions are not a capacity-tested public deployment. Production JWT verification, PostgreSQL adapters, outbox relay, Kafka consumers, Redis integration, image scanning, operational metrics, and cloud provisioning remain the documented production plan.
 
