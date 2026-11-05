@@ -16,7 +16,7 @@ Each operation opens its own connection. `BEGIN IMMEDIATE` takes the write lock 
 
 The worker selects one unprocessed job, conditionally changes PENDING to CONFIRMED, and marks the job processed in the same transaction. Holding the transaction across these two short database statements is appropriate here. Never hold this database lock while making payment or other network calls.
 
-## Production system
+## Proposed production system
 
 ![Production architecture](architecture.svg)
 

@@ -1,34 +1,37 @@
-# Verification and risk review
+# Verification and known limits
 
-## Executed checks
+This is the current verification summary. [TESTING.md](TESTING.md) describes the scenarios, reproduction commands, fixed bugs, and recorded load observations. Test counts below describe the current suite, not a history of earlier milestones.
 
-- Expanded suite: 44 tests passed on Windows/Python 3.14 and Linux/Python 3.12, including eight tests with real API/worker subprocesses. Reproducible failure cases, fixed request parsing issues, and both 10,000-intent load reports are documented in [TESTING.md](TESTING.md).
-- [GitHub CI passed](https://github.com/khushi09-oss/flashdrop/actions/runs/41774681722): lint, formatting, all 28 tests, isolated package build, and Docker image build.
-- 28 tests passed on Windows/Python 3.14 and inside the Linux/Python 3.12 container.
-- Real HTTP checks covered acceptance, replay, current status, ownership, malformed JSON, strict quantity types, missing identity, oversized bodies, and concurrent retries.
-- Concurrent inventory test: 180 attempts for 100 units produced exactly 100 orders and 80 stock rejections, with zero inventory remaining.
-- Concurrent retries produced one order and one job. Two independent processes sharing one database competed for the final unit; only one succeeded.
-- Actual process termination before commit left stock unchanged. Termination after acceptance commit allowed the same key to recover the saved order.
-- Database-trigger failures verified rollback of reservation/order creation and worker confirmation/job acknowledgment.
-- Duplicate job delivery confirmed the same order without a second stock decrement.
-- A temporary inverted inventory predicate caused the order test to fail; the original source was restored afterward.
-- Ruff lint and formatting checks passed. Architecture and deployment SVG/draw.io XML parsed successfully; PNG exports were visually inspected.
-- Python source distribution and wheel built successfully with `python -m build --no-isolation`; bytecode compilation also passed.
-- Docker image built successfully; Compose service became healthy, ran as UID 10001, and passed the live create/retry/confirm demonstration.
-- An accepted order remained accessible and CONFIRMED after restarting the container with its persistent named volume.
+## Automated verification
 
-## Focused review
+| Check | Evidence |
+| --- | --- |
+| Test suite | 44 tests: 17 HTTP/input, 19 persistence/concurrency, 8 process-level system tests |
+| Platform coverage | Passed on Windows/Python 3.14 and Linux/Python 3.12 |
+| Static checks | Ruff lint and format checks; Python bytecode compilation |
+| Packaging | Source distribution and wheel built; static UI files included |
+| Container | Image built and ran as UID 10001; health, terminal demo, and persistence after restart checked |
+| CI | Tests, lint, formatting, package build, and image build run on pushes and PRs; see the [workflow results](https://github.com/khushi09-oss/flashdrop/actions/workflows/ci.yml) |
+| Documentation | Relative links and diagram XML checked; production diagram exports previously inspected |
 
-Inventory, order, retry identity, and durable work share one transaction. The stock predicate and nonnegative constraint prevent overselling. The unique user/key constraint and payload comparison protect retries. SQL uses parameters for user-controlled values. API lookups filter by owner. Error responses omit internal stack traces. Identity and request fields are bounded, request bodies are capped, and local ports bind to loopback.
+The [application baseline CI run](https://github.com/khushi09-oss/flashdrop/actions/runs/41777069815) verifies commit `f65940d`. Subsequent documentation changes do not change that application code; use the workflow results to check a particular PR head.
 
-No blocking correctness findings remain within the local demonstration scope. The committed application has no third-party runtime packages. Development tools and the base image still require routine vulnerability maintenance.
+## What the tests establish
 
-## Browser demo verification
+Two real API processes sharing a local database cannot both sell the final unit. Concurrent retries reserve stock once; conflicting payloads using the same key are rejected. Failed order/job writes roll back the whole reservation, and worker failures leave work recoverable. Actual process termination tests cover uncommitted updates and accepted requests whose responses are not read. Two real workers drain the pending queue without a second stock decrement.
 
-The browser demo adds two HTTP tests, bringing the suite to 30. The page's actual JavaScript was executed with a small DOM fixture against a live container API: creation and confirmation passed, retrying after editing the form reused the original payload and order ID, stock decreased only once, and insufficient-stock errors reenabled the controls. Static routes and source-file isolation are covered by HTTP tests. Browser rendering could not be visually verified in this environment; desktop/mobile layout checks remain manual.
+HTTP checks cover ownership filtering, strict quantities and identifiers, body limits, malformed/duplicate JSON fields, conflicting length headers, and controlled database-unavailable errors. The review checked transaction boundaries, uniqueness and stock constraints, parameterized SQL, owner-filtered lookups, and error responses that omit internal stack traces.
 
-## Deployment limits
+## Load observations
 
-The local identity header is impersonable and is not production authentication. Python's demonstration HTTP server, a single SQLite host, and its serialized write transactions are not a capacity-tested public deployment. Production JWT verification, PostgreSQL adapters, outbox relay, Kafka consumers, Redis integration, image scanning, operational metrics, and cloud provisioning remain the documented production plan.
+The recorded Windows and Linux runs each submitted 10,000 purchase intents through two API processes with at most 64 concurrent clients. Each produced 100 accepted and confirmed orders, 9,900 final stock rejections, and zero remaining stock. The Windows run included 13 temporary 503 attempts, recovered by same-key retries; the Linux run recorded none.
 
-The bounded 10,000-intent test is documented in [TESTING.md](TESTING.md); it does not establish production capacity or 10,000 simultaneous connections. Real Kafka/Redis outages and cloud failover cannot be tested against unprovisioned services. Local crash, rollback, persistence, and duplicate-processing tests verify the implemented equivalents; production adapter tests are a release gate.
+These are single observations on a shared development machine, not production capacity guarantees. Raw reports, latency, timing, retry accounting, and limitations are in [TESTING.md](TESTING.md#observed-10000-request-results).
+
+## Unverified and out of scope
+
+- The browser JavaScript was exercised with a DOM fixture against a live API, including creation, confirmation, immutable retries, and stock rejection. This is not an automated browser test. Desktop/mobile rendering and accessibility have not been fully verified in a browser.
+- Real Redis/Kafka outages, PostgreSQL failover, JWT authentication, cloud deployment, and external payment effects have not been executed. Those integrations are proposed in the production design.
+- SQLite serializes writes; bounded load tests do not prove resilience to unlimited connections, slow clients, host loss, or 10,000 simultaneous requests.
+- The demo identity header is impersonable. Ownership filtering is demonstrated, but it is not a substitute for authentication. The HTTP server is for local demonstration.
+- The application has no third-party runtime packages. Development tools and the base image still require ongoing vulnerability maintenance; this review is not a complete dependency or image security certification.
