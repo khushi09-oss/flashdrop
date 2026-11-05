@@ -5,10 +5,10 @@
 | Runnable backend | `python -m flashdrop`; no runtime dependencies |
 | POST order and GET status | `flashdrop/api.py`; real HTTP contract tests |
 | Inventory and input validation | Conditional stock update, database constraints, strict JSON validation |
-| No overselling under concurrency | Database transaction; 180 requests competing for 100 units |
+| No overselling under concurrency | Database transaction; thread-level tests, competing HTTP processes, and bounded load tests |
 | Idempotent retries | Unique user/key constraint, persisted payload comparison, stable acceptance replay |
 | Asynchronous queue and worker | Durable `jobs` table and background polling worker |
-| Two backend instances, last unit | Separate-process test sharing SQLite; PostgreSQL change in `ARCHITECTURE.md` |
+| Two backend instances, last unit | Two real HTTP API processes share SQLite; PostgreSQL change explained in `ARCHITECTURE.md` |
 | Production architecture diagram | `architecture.drawio`, exported SVG and PNG |
 | Gateway, authentication, rate limiting | Gateway + ALB in production diagram and deployment plan |
 | Multiple API instances and workers | Separate ECS services in production design |

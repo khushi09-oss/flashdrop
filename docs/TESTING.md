@@ -11,7 +11,7 @@ Both commands create temporary databases and remove their child processes afterw
 
 ## Automated scenarios
 
-The suite contains 44 tests: 17 HTTP/input tests, 19 store tests, and 8 process-level system tests.
+The suite covers HTTP/input handling, persistence/concurrency, and real-process system behavior. See [the current verification summary](AUDIT.md) for the suite count and platform coverage.
 
 | Scenario | Required outcome |
 | --- | --- |

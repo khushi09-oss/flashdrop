@@ -1,126 +1,120 @@
 # FlashDrop
 
-A small flash-sale backend that reserves inventory safely, deduplicates retries, and confirms orders asynchronously. Python 3.12+, standard library only; no runtime dependency installation required.
+A flash-sale backend that reserves limited inventory, prevents duplicate orders on retries, and confirms orders asynchronously.
 
-## Run in two terminals
+The runnable service uses **Python 3.12+, SQLite, and a durable jobs table**. It includes a small browser demo and has no third-party runtime dependencies. AWS, PostgreSQL, Redis, and Kafka are a separate production proposal, not services required to run this repository.
 
-From this directory:
+## Quick start
 
-```powershell
-# Terminal 1: API and background worker; starts with 100 iPhone units.
+```sh
+git clone https://github.com/khushi09-oss/flashdrop.git
+cd flashdrop
 python -m flashdrop
+```
 
-# Terminal 2: create an order, retry it, and watch it become CONFIRMED.
+Open **http://localhost:8000**. Place an order, watch it become CONFIRMED, then select **Retry last request**. The retry returns the same order without reserving more stock.
+
+For a terminal demonstration, run this in a second terminal:
+
+```sh
 python scripts/demo.py
 ```
 
-The database is created at `data/flashdrop.db`. Restarts preserve orders and inventory. Each demo run purchases one unit. For a separate fresh demo, use `python -m flashdrop --db data/fresh.db`.
+A new database starts with 100 units of `iphone_16`. Orders consume real demo inventory, and restarts preserve it in `data/flashdrop.db`. To use a separate fresh database, start with `python -m flashdrop --db data/fresh.db`. Stop any other service using port 8000 first.
 
-Open **http://localhost:8000** for a small interactive demo. Place a new order to see its confirmation, then choose **Retry last request** to verify the order ID stays the same and stock is not reserved twice. The page shows current stock and expandable request/response details. Demo requests consume real inventory in the local database.
+Run the automated checks from the repository root:
 
-## Documentation
-
-- Architecture image: [docs/architecture.svg](docs/architecture.svg).
-- Editable diagram: [docs/architecture.drawio](docs/architecture.drawio). Open https://app.diagrams.net, choose **Open Existing Diagram**, and select this file.
-- Deployment image: [docs/deployment.svg](docs/deployment.svg).
-- Editable deployment diagram: [docs/deployment.drawio](docs/deployment.drawio).
-- Deployment notes: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-- Failure tests and measured load results: [docs/TESTING.md](docs/TESTING.md).
-
-## Production architecture
-
-![Production architecture](docs/architecture.png)
-
-## Deployment and operations
-
-![Deployment and operations](docs/deployment.png)
-
-## API
-
-`X-User-Id` selects a **demo identity**, not authenticated credentials. It must match `userId`; GET only returns orders belonging to that identity. This server binds to localhost by default. Public deployment requires verified JWT identity and a production HTTP server; see the deployment guide.
-
-```powershell
-$headers = @{ 'X-User-Id' = 'user_123' }
-$body = '{"userId":"user_123","productId":"iphone_16","quantity":1,"idempotencyKey":"request_abc123"}'
-$order = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/orders -Headers $headers -ContentType application/json -Body $body
-$order
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/orders/$($order.orderId)" -Headers $headers
+```sh
+python -m unittest discover -v
 ```
 
-| Request | Result |
-| --- | --- |
-| `POST /orders` | `202 {"orderId":"ord_...","status":"PENDING"}` |
-| Same user, key, and payload | Same 202 acceptance; `Idempotency-Replayed: true` |
-| Same user and key, different product or quantity | 409 `IDEMPOTENCY_CONFLICT` |
-| `GET /orders/:orderId` | 200 with current `PENDING` or `CONFIRMED` status |
-| Insufficient stock | 409 `OUT_OF_STOCK` |
-| Invalid fields or quantity | 422 `VALIDATION_ERROR` |
-| Unknown product/order or another user's order | 404 |
-| Missing identity / identity mismatch | 401 / 403 |
-| `GET /health` | 200 if the database can be read |
-| `GET /products/iphone_16` | Current inventory snapshot for the demo page |
-| Database busy or unavailable | 503; retry with the same key |
+See [verification and limits](docs/AUDIT.md) for the current results and [testing](docs/TESTING.md) for failure scenarios and the optional isolated load test.
 
-POST always replays the original acceptance status. Use GET for the latest order status. Validation requires exactly the four documented fields, quantity as an integer from 1 to 10,000, and identifiers of 1–128 letters, digits, `.`, `:`, `_`, or `-`. JSON bodies are limited to 8 KiB.
+## Implemented architecture
 
-## How correctness works
+```mermaid
+flowchart LR
+    Client[Browser or API client] --> API[Python HTTP API]
+    API -->|Reserve stock, create order and job| DB[(SQLite)]
+    DB -->|Pending jobs| Worker[Background worker]
+    Worker -->|Confirm order and mark job done| DB
+```
 
-One transaction checks the idempotency key, conditionally decrements stock, creates a PENDING order, and inserts a durable job. Either all changes commit or none do. The worker confirms the order and marks the job processed in a second transaction. It never deducts inventory again.
+The API and worker run together by default. Separate processes can share the same database file on one host; independent files on different hosts cannot coordinate inventory.
+
+One transaction checks the user's idempotency key, conditionally decrements stock, creates a PENDING order, and inserts a job. All changes commit together or roll back. The worker confirms the order and marks its job processed in a second transaction; it never deducts inventory again.
 
 ```sql
 UPDATE products SET stock = stock - :quantity
 WHERE id = :product_id AND stock >= :quantity;
 ```
 
-If zero rows change, the order is rejected. A database constraint also prevents negative stock. SQLite's `BEGIN IMMEDIATE` serializes writers across connections and processes sharing this file. A Python lock alone would not protect separate processes.
+Zero changed rows means reject the purchase. SQLite's `BEGIN IMMEDIATE` coordinates writers across processes, and constraints enforce nonnegative stock and unique `(user_id, idempotency_key)` values. [Architecture decisions and failure handling](docs/ARCHITECTURE.md) explain the tradeoffs.
 
-## Structure
+## API
 
-```text
-flashdrop/
-  __main__.py    CLI, startup, graceful shutdown
-  api.py         HTTP routes, identity boundary, JSON errors
-  validation.py  Request validation
-  store.py       Schema, transactions, inventory, idempotency
-  worker.py      Background polling and retry loop
-  static/        Demo page, stylesheet, and browser interactions
-tests/           HTTP, concurrency, rollback, and process-crash tests
-scripts/demo.py  End-to-end demonstration
-docs/            Architecture, deployment, and interview explanation
+Set `Content-Type: application/json` and `X-User-Id: user_123` when creating an order. The identity header is a local demo mechanism, not authentication. It must match `userId`; order reads are filtered by that identity.
+
+```json
+{
+  "userId": "user_123",
+  "productId": "iphone_16",
+  "quantity": 1,
+  "idempotencyKey": "request_abc123"
+}
 ```
 
-## Verify
+| Request or condition | Response |
+| --- | --- |
+| `POST /orders` | 202 with `orderId` and `status: PENDING`; Location points to the order |
+| Same user, key, and payload | Same acceptance; `Idempotency-Replayed: true` |
+| Same user/key, changed product or quantity | 409 `IDEMPOTENCY_CONFLICT` |
+| `GET /orders/:orderId` | 200 with current PENDING or CONFIRMED status; requires `X-User-Id` |
+| Insufficient stock | 409 `OUT_OF_STOCK` |
+| Invalid fields or quantity | 422 `VALIDATION_ERROR` |
+| Malformed JSON or ambiguous field/length headers | 400 |
+| Unknown product/order or another user's order | 404 |
+| Missing identity / identity mismatch | 401 / 403 |
+| `GET /products/iphone_16` | Current stock snapshot; not a reservation |
+| `GET /health` | 200 if the inventory database can be read |
+| Database busy or unavailable | 503; retry with the same key |
 
-```powershell
-python -m unittest discover -v
-# Optional isolated 10,000-intent test, capped at 64 concurrent clients:
-python -m tests.load_test --requests 10000 --concurrency 64
-# Optional development tools:
-python -m pip install ruff==0.14.3 build==1.3.0
-python -m ruff check .
-python -m ruff format --check .
-python -m build
-```
-
-The 44-test suite includes real competing API/worker processes, child-process termination, concurrent retries, rollback, ownership checks, and ambiguous request rejection. The separate load runner verifies 10,000 purchase intents at bounded concurrency and records retries, latency, and database invariants. See [the measured results and remaining limits](docs/TESTING.md); this is not evidence of 10,000 simultaneous connections or production capacity.
+POST replays the original acceptance status; GET reports the latest status. Only accepted orders bind a key. Validation requires exactly the four documented fields, integer quantities from 1 to 10,000, and identifiers of 1-128 letters, digits, `.`, `:`, `_`, or `-`. Bodies are limited to 8 KiB.
 
 ## Docker
 
-```powershell
+With Docker running:
+
+```sh
 docker compose up --build -d
-python scripts/demo.py
-docker compose logs -f
-docker compose down
 ```
 
-The named volume retains data after `down`. Docker Desktop must be running. This container is a single-host demonstration, not the multi-instance cloud system in the production diagram.
+Open the same browser URL or run the terminal demo. `docker compose down` stops the service and retains its named volume. Use either Docker or the Python server on port 8000, rather than starting both.
 
-For two local API processes, run `python -m flashdrop --port 8000 --no-worker` and `python -m flashdrop --port 8001 --no-worker`, then `python -m flashdrop --worker-only` in a third terminal. All must use the same database path on the same host.
+## Production proposal
 
-## Scope and assumptions
+The diagrams below show a proposed AWS deployment. The production HTTP adapter, JWT verification, PostgreSQL store, outbox relay, Kafka consumer, Redis cache, and cloud provisioning are not implemented here.
 
-- The assignment permits a simulated broker and local persistence. SQLite and the `jobs` table implement that scope; Redis, Kafka, and PostgreSQL are production design components.
-- PENDING means inventory is already reserved. CONFIRMED means background processing completed. Payments, cancellations, restocking, and reservation expiration are outside this exercise.
-- Idempotency is scoped to user plus key and retained with the order indefinitely in this demo. Only successful acceptances bind a key; rejected requests may be retried and reevaluated.
-- Different keys represent different purchase intents, even for the same customer. No per-customer purchase limit was specified.
-- SQLite on separate machines with independent disks is unsafe for shared inventory. Production needs the shared database transaction described in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+![Proposed production architecture](docs/architecture.png)
+
+![Proposed deployment and operations](docs/deployment.png)
+
+[Architecture explanation](docs/ARCHITECTURE.md) · [Deployment plan](docs/DEPLOYMENT.md) · Editable diagrams: [architecture](docs/architecture.drawio), [deployment](docs/deployment.drawio). SVG exports are in `docs/`. Open the `.drawio` files in [draw.io](https://app.diagrams.net).
+
+## Scope and repository guide
+
+PENDING means inventory is already reserved; CONFIRMED means the simulated background step completed. Payments, fulfillment, cancellation, restocking, expiration, and per-customer purchase limits are outside this exercise. Idempotency records are retained with orders indefinitely.
+
+The local identity header, demonstration HTTP server, and single SQLite host are not a public production deployment. The measured load test uses bounded concurrency and does not establish capacity for 10,000 simultaneous connections.
+
+| Location | Responsibility |
+| --- | --- |
+| `flashdrop/api.py`, `validation.py` | HTTP boundary and request validation |
+| `flashdrop/store.py` | Schema, transactions, inventory, idempotency, and job processing |
+| `flashdrop/worker.py`, `__main__.py` | Worker loop, startup, and shutdown |
+| `flashdrop/static/` | Browser demo |
+| `tests/` | HTTP, persistence, concurrency, process recovery, and optional load tests |
+| `scripts/demo.py` | Terminal demonstration |
+| `docs/` | Architecture, deployment, verification, and requirement coverage |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit, validation, and PR workflow, and [requirement coverage](docs/REQUIREMENTS.md) for the assessment mapping.
